@@ -27,6 +27,8 @@ SEXP C_treeseq_discrete_mpr_ancestry_flux(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,
     SEXP,SEXP);
 SEXP C_treeseq_discrete_mpr_ancestry(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,
     SEXP,SEXP);
+SEXP C_treeseq_discrete_mpr_ancestry_mask(SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,SEXP,
+    SEXP,SEXP,SEXP,SEXP);
 
 SEXP C_treeseq_quadratic_mpr(SEXP,SEXP,SEXP);
 SEXP C_treeseq_quadratic_mpr_minimize(SEXP);
@@ -56,6 +58,7 @@ static const R_CallMethodDef CallEntries[] = {
     CALLDEF(C_treeseq_discrete_mpr_edge_history, 5),
     CALLDEF(C_treeseq_discrete_mpr_ancestry_flux, 9),
     CALLDEF(C_treeseq_discrete_mpr_ancestry, 10),
+    CALLDEF(C_treeseq_discrete_mpr_ancestry_mask, 11),
 
     CALLDEF(C_treeseq_quadratic_mpr, 3),
     CALLDEF(C_treeseq_quadratic_mpr_minimize, 1),
