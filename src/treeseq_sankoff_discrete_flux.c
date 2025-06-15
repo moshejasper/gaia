@@ -393,3 +393,188 @@ SEXP C_treeseq_discrete_mpr_ancestry_flux(
     UNPROTECT(4);
     return flux;
 }
+
+SEXP C_treeseq_discrete_mpr_ancestry_flux_mask(
+    SEXP tr,
+    SEXP r_path_offsets,
+    SEXP r_path_states,
+    SEXP r_path_times,
+    SEXP r_num_state_sets,
+    SEXP r_state_sets,
+    SEXP r_num_sample_sets,
+    SEXP r_sample_sets,
+    SEXP r_times, 
+    SEXP r_tree_mask)
+{
+    tsk_tree_t *tree = (tsk_tree_t *) R_ExternalPtrAddr(tr);
+
+    if (!tsk_tree_has_sample_lists(tree))
+    {
+        TSX_ERROR("sample list tracking not enabled for this tree sequence");
+        return R_NilValue;
+    }
+
+    const tsk_treeseq_t *ts = tree->tree_sequence;
+
+    tsk_id_t *restrict edge = tree->edge;
+    tsk_id_t *restrict parent = tree->parent;
+    tsk_id_t *restrict right_child = tree->right_child;
+    tsk_id_t *restrict left_sib = tree->left_sib;
+    tsk_id_t *restrict left_sample = tree->left_sample;
+    tsk_id_t *restrict right_sample = tree->right_sample;
+    tsk_id_t *restrict next_sample = tree->next_sample;
+    double *restrict node_time = ts->tables->nodes.time;
+    
+    int num_times = Rf_length(r_times);
+    int num_time_bins = num_times - 1;
+    int num_state_sets = *INTEGER(r_num_state_sets);
+    int num_state_sets_squared = num_state_sets * num_state_sets;
+    int num_sample_sets = *INTEGER(r_num_sample_sets);
+    int *restrict state_set = INTEGER(r_state_sets);
+    int *restrict sample_set = INTEGER(r_sample_sets);
+    int *restrict path_offset = INTEGER(r_path_offsets);
+    int *restrict path_states = INTEGER(r_path_states);
+    double *restrict times = REAL(r_times);
+    double *restrict path_times = REAL(r_path_times);
+    int *restrict tree_mask = INTEGER(r_tree_mask);
+    
+    SEXP dims = PROTECT(Rf_allocVector(INTSXP, 4));
+    SET_INTEGER_ELT(dims, 0, num_state_sets);
+    SET_INTEGER_ELT(dims, 1, num_state_sets);
+    SET_INTEGER_ELT(dims, 2, num_sample_sets);
+    SET_INTEGER_ELT(dims, 3, num_time_bins);
+    SEXP flux = PROTECT(Rf_allocArray(REALSXP, dims));
+    SEXP flux_scale = PROTECT(
+        Rf_allocMatrix(REALSXP, num_sample_sets, num_time_bins));
+    SEXP flux_max_age = PROTECT(
+        Rf_allocMatrix(REALSXP, num_state_sets, num_state_sets));
+
+    Rf_setAttrib(flux, Rf_install("scale"), flux_scale);
+    Rf_setAttrib(flux, Rf_install("max.age"), flux_max_age);
+
+    double *numer = REAL(flux);
+    double *denom = REAL(flux_scale);
+    double *max_age = REAL(flux_max_age);
+    
+    Memzero(denom, num_sample_sets * num_time_bins);
+    Memzero(numer, num_state_sets_squared * num_sample_sets * num_time_bins);
+    Memzero(max_age, num_state_sets_squared);
+
+    int rc;
+    int stack_top;
+    
+    int num_nodes = tsk_treeseq_get_num_nodes(ts);
+    int virtual_root = num_nodes;
+    
+    int *path;
+    int path_length;
+    double *path_time;
+
+    tsk_id_t *restrict stack = (tsk_id_t *) R_alloc(
+        num_nodes + 1, sizeof(*stack));
+
+    tsk_id_t h;
+    tsk_id_t u;
+    tsk_id_t v;
+
+    double segment_length;
+    double sequence_length = ts->tables->sequence_length;
+
+    for (
+        rc = tsk_tree_first(tree);
+        rc == TSK_TREE_OK;
+        rc = tsk_tree_next(tree))
+    {
+        if (tree_mask[tree->index] == 0) continue; // only use non-masked trees for the operation
+        segment_length = tree->interval.right - tree->interval.left;
+        segment_length /= sequence_length;
+        stack_top = -1;
+        for (u = right_child[virtual_root]; u != TSK_NULL; u = left_sib[u])
+        {
+            stack_top++;
+            stack[stack_top] = u;
+        }
+        while (stack_top >= 0)
+        {
+            u = stack[stack_top];
+            stack_top--;
+            for (v = right_child[u]; v != TSK_NULL; v = left_sib[v])
+            {
+                stack_top++;
+                stack[stack_top] = v;
+            }
+            
+            h = edge[u];
+            
+            // true for roots (including isolated sample nodes)
+            if (h == TSK_NULL)
+            {
+                count_sample_segments_descended_from_node(
+                    u,
+                    num_times,
+                    num_sample_sets,
+                    segment_length,
+                    times,
+                    node_time,
+                    sample_set,
+                    left_sample,
+                    right_sample,
+                    next_sample,
+                    denom
+                );
+                continue;
+            }
+            
+            v = u;
+            u = parent[v];
+
+            if (node_time[u] < times[0] || node_time[v] > times[num_time_bins])
+                continue;
+
+            path = path_states + path_offset[h];
+            path_length = path_offset[h+1] - path_offset[h];
+            path_time = path_times + path_offset[h];
+
+            count_sample_segments_descended_from_edge_migrations(
+                u,
+                v,
+                num_times,
+                num_state_sets,
+                num_sample_sets,
+                segment_length,
+                path_length,
+                path,
+                path_time,
+                path_offset,
+                path_states,
+                path_times,
+                times,
+                node_time,
+                state_set,
+                sample_set,
+                edge,
+                parent,
+                left_sample,
+                right_sample,
+                next_sample,
+                numer,
+                max_age
+            );
+        }
+    }
+    for (int i = 0; i < num_time_bins; ++i)
+    {
+        for (int j = 0; j < num_sample_sets; ++j)
+        {
+            if (denom[j] > 0)
+            {
+                for (int k = 0; k < num_state_sets_squared; ++k)
+                    numer[k] /= denom[j];
+            }
+            numer += num_state_sets_squared;
+        }
+        denom += num_sample_sets;
+    }
+    UNPROTECT(4);
+    return flux;
+}
