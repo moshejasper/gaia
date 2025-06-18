@@ -185,49 +185,52 @@ treeseq_discrete_mpr_ancestry_mask = function(ts, obj, cost_matrix,
 # #'   state_sets=1:2,     # Keep states separate
 # #'   sample_sets=1:3     # Keep samples separate
 # #' )
-# treeseq_discrete_mpr_ancestry_flux_mask = function(ts, obj, cost_matrix,
-#     adjacency_matrix, times, state_sets, sample_sets, tree_mask)
-# {
-#     stopifnot(inherits(ts, "treeseq"))
-#     stopifnot(inherits(obj, "discrete") && inherits(obj, "mpr"))
-#     stopifnot(!is.unsorted(times))
-#     stopifnot(all(times >= 0))
-#     num_states = nrow(cost_matrix)
-#     num_samples = treeseq_num_samples(ts)
-#     if (missing(state_sets))
-#         state_sets = 1:num_states
-#     if (missing(sample_sets))
-#         sample_sets = rep(1L, num_samples)
-#     stopifnot(is.integer(state_sets))
-#     stopifnot(is.integer(sample_sets))
-#     stopifnot(all(state_sets > 0))
-#     stopifnot(all(sample_sets >= 0))
-#     stopifnot(all(tabulate(state_sets) > 0))
-#     stopifnot(all(tabulate(sample_sets) > 0))
-#     stopifnot(length(state_sets) == num_states)
-#     stopifnot(length(sample_sets) == num_samples)
-#     num_state_sets = as.numeric(max(state_sets))
-#     num_sample_sets = as.numeric(max(sample_sets))
-#     num_time_bins = length(times) - 1
-#     if (is.logical(tree_mask) || is.numeric(tree_mask))
-#         tree_mask = as.integer(tree_mask)
-#     stopifnot(is.integer(tree_mask))
-#     storage = num_state_sets * num_state_sets * num_sample_sets * num_time_bins
-#     if (storage > .Machine$integer.max)
-#         stop("storage requirements too large")
-#     e = treeseq_discrete_mpr_edge_history(
-#         ts, obj, cost_matrix, adjacency_matrix, FALSE)
-#     .Call(
-#         C_treeseq_discrete_mpr_ancestry_flux
-#         , ts@tree
-#         , attr(e, "path.offset")
-#         , e$state_id
-#         , e$time
-#         , as.integer(num_state_sets)
-#         , state_sets - 1L
-#         , as.integer(num_sample_sets)
-#         , sample_sets - 1L
-#         , times
-#         , tree_mask
-#     )
-# }
+treeseq_discrete_mpr_ancestry_flux_mask = function(ts, obj, cost_matrix,
+    adjacency_matrix, times, state_sets, sample_sets, tree_mask)
+{
+    stopifnot(inherits(ts, "treeseq"))
+    stopifnot(inherits(obj, "discrete") && inherits(obj, "mpr"))
+    stopifnot(!is.unsorted(times))
+    stopifnot(all(times >= 0))
+    num_states = nrow(cost_matrix)
+    num_samples = treeseq_num_samples(ts)
+    if (missing(state_sets))
+        state_sets = 1:num_states
+    if (missing(sample_sets))
+        sample_sets = rep(1L, num_samples)
+    stopifnot(is.integer(state_sets))
+    stopifnot(is.integer(sample_sets))
+    stopifnot(all(state_sets > 0))
+    stopifnot(all(sample_sets >= 0))
+    stopifnot(all(tabulate(state_sets) > 0))
+    stopifnot(all(tabulate(sample_sets) > 0))
+    stopifnot(length(state_sets) == num_states)
+    stopifnot(length(sample_sets) == num_samples)
+    num_state_sets = as.numeric(max(state_sets))
+    num_sample_sets = as.numeric(max(sample_sets))
+    num_time_bins = length(times) - 1
+    if (is.logical(tree_mask) || is.numeric(tree_mask))
+        tree_mask = as.integer(tree_mask)
+    stopifnot(is.integer(tree_mask))
+    storage = num_state_sets * num_state_sets * num_sample_sets * num_time_bins
+    if (storage > .Machine$integer.max)
+        stop("storage requirements too large")
+    if (is.logical(tree_mask) || is.numeric(tree_mask))
+        tree_mask = as.integer(tree_mask)
+    stopifnot(is.integer(tree_mask))
+    e = treeseq_discrete_mpr_edge_history(
+        ts, obj, cost_matrix, adjacency_matrix, FALSE)
+    .Call(
+        C_treeseq_discrete_mpr_ancestry_flux
+        , ts@tree
+        , attr(e, "path.offset")
+        , e$state_id
+        , e$time
+        , as.integer(num_state_sets)
+        , state_sets - 1L
+        , as.integer(num_sample_sets)
+        , sample_sets - 1L
+        , times
+        , tree_mask
+    )
+}
