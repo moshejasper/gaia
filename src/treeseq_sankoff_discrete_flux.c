@@ -394,7 +394,7 @@ SEXP C_treeseq_discrete_mpr_ancestry_flux(
     return flux;
 }
 
-SEXP C_treeseq_discrete_mpr_ancestry_flux(
+SEXP C_treeseq_discrete_mpr_ancestry_flux_mask(
     SEXP tr,
     SEXP r_path_offsets,
     SEXP r_path_states,
