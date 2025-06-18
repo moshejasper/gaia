@@ -221,7 +221,7 @@ treeseq_discrete_mpr_ancestry_flux_mask = function(ts, obj, cost_matrix,
     e = treeseq_discrete_mpr_edge_history(
         ts, obj, cost_matrix, adjacency_matrix, FALSE)
     .Call(
-        C_treeseq_discrete_mpr_ancestry_flux
+        C_treeseq_discrete_mpr_ancestry_flux_mask
         , ts@tree
         , attr(e, "path.offset")
         , e$state_id
