@@ -1,7 +1,7 @@
 #include <R.h>
 #include <Rmath.h>
 #include <assert.h>
-#include <cmath>
+#include <math.h>
 
 #include "graph.h"
 #include "fequals.h"
@@ -31,7 +31,7 @@ prev_state(graph_t *g, int current, int source)
 
     // shortest graph distance from source state to current state
     D = distances[source + current*num_states];
-    assert (std::isfinite(D));
+    assert (isfinite(D));
     for (i = 0; i < num_neighbors; ++i)
     {
         // if (neighbors[i] == source)  // changed to avoid path short-circuting: 
