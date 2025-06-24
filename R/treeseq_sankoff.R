@@ -73,7 +73,8 @@
 #' # Can also use branch lengths to scale costs
 #' mpr_costs_bl = treeseq_discrete_mpr(ts, samples, costs, use_brlen=TRUE)
 treeseq_discrete_mpr = function(ts, sample_locations, cost_matrix, 
-    use_brlen=FALSE)
+    use_brlen=FALSE, sample_weights=Inf, source_locations=NULL, 
+    source_weights=Inf, target_locations=NULL, target_weights=0)
 {
     stopifnot(inherits(ts, "treeseq"))
     stopifnot(is.matrix(sample_locations))
@@ -92,8 +93,32 @@ treeseq_discrete_mpr = function(ts, sample_locations, cost_matrix,
     G = matrix(0, num_states, N)
     sample_ids = sample_locations[, "node_id"] + 1L
     state_ids = sample_locations[, "state_id"]
-    G[, sample_ids] = Inf
+    G[, sample_ids] = sample_weights
     G[cbind(state_ids, sample_ids)] = 0
+    if (! is.null(source_locations)){
+        stopifnot(is.matrix(source_locations))
+        stopifnot(!is.null(colnames(source_locations)))
+        stopifnot(all(colnames(source_locations) %in% c("node_id","state_id")))
+        storage.mode(source_locations) = "integer"
+        stopifnot(all(source_locations[,"state_id"] > 0L))
+        stopifnot(all(source_locations[,"state_id"] <= num_states))
+        source_ids = source_locations[, "node_id"] + 1L
+        source_state_ids = source_locations[, "state_id"]
+        G[, source_ids] = source_weights
+        G[cbind(source_state_ids, source_ids)] = 0
+    }
+    if (! is.null(target_locations)){
+        stopifnot(is.matrix(target_locations))
+        stopifnot(!is.null(colnames(target_locations)))
+        stopifnot(all(colnames(target_locations) %in% c("node_id","state_id")))
+        storage.mode(target_locations) = "integer"
+        stopifnot(all(target_locations[,"state_id"] > 0L))
+        stopifnot(all(target_locations[,"state_id"] <= num_states))
+        target_ids = target_locations[, "node_id"] + 1L
+        target_state_ids = target_locations[, "state_id"]
+        G[, target_ids] = target_weights
+        G[cbind(target_state_ids, target_ids)] = 0
+    }
     structure(.Call(
         C_treeseq_discrete_mpr
         , ts@treeseq
