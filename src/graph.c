@@ -1,6 +1,7 @@
 #include <R.h>
 #include <Rmath.h>
 #include <assert.h>
+#include <cmath>
 
 #include "graph.h"
 #include "fequals.h"
@@ -30,11 +31,11 @@ prev_state(graph_t *g, int current, int source)
 
     // shortest graph distance from source state to current state
     D = distances[source + current*num_states];
-
+    assert (std::isfinite(D));
     for (i = 0; i < num_neighbors; ++i)
     {
-        if (neighbors[i] == source)
-            return source;
+        // if (neighbors[i] == source)  // changed to avoid path short-circuting: 
+        //     return source;           // I *should* get a bug if it is hunting across an infinite distance.
         // shortest graph distance from source state to
         // current state that goes through this neighbor
         d = distances[source + neighbors[i]*num_states] + weights[i];
